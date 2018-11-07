@@ -1,6 +1,6 @@
 {
   "dataset_reader": {
-    "type": "coqa1",
+    "type": "coqa-squad-plus",
     "lazy": true,
     "token_indexers": {
       "tokens": {
@@ -24,7 +24,7 @@
       }
     }
   },
-  "train_data_path": "https://nlp.stanford.edu/data/coqa/coqa-train-v1.0.json",
+  "train_data_path": "https://nlp.stanford.edu/data/coqa/coqa-dev-v1.0.json",
   "validation_data_path": "https://nlp.stanford.edu/data/coqa/coqa-dev-v1.0.json",
   "model": {
     "type": "bidaf-on-coqa",
@@ -50,13 +50,14 @@
             "embedding_dim": 16
           },
           "encoder": {
-  			"type": "alternating_lstm",
- 			"input_size": 1224,
-  			"hidden_size": 300,
-  			"num_layers": 8,
-  			"recurrent_dropout_probability": 0.1,
-  			"use_highway": true
-			}
+            "type": "cnn",
+            "embedding_dim": 16,
+            "num_filters": 100,
+            "ngram_filter_sizes": [
+              5
+            ]
+          },
+          "dropout": 0.2
         }
       }
     },
