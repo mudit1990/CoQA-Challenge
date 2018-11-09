@@ -65,22 +65,34 @@ class QuACReader(DatasetReader):
             metadata = {}
             question_id = paragraph_json['id']
             metadata["instance_id"] = [str(question_id)+"_"+str(qa['turn_id']) for qa in qas]
+            if(len(metadata["instance_id"])>10):
+                metadata["instance_id"]=metadata["instance_id"][:10]
             question_text_list = [qa["input_text"].strip().replace("\n", "") for qa in qas]
+            if(len(question_text_list)>10):
+                question_text_list=question_text_list[:10]
             answer_texts_list = [[answer['span_text']] for answer in ans]
+            if(len(answer_texts_list)>10):
+                answer_texts_list=answer_texts_list[:10]
             #logger.info("QUESTIONS ARE")
-            logger.info(len(question_text_list))
+
             #logger.info(question_text_list)
             #logger.info("ANSWERS ARE")
-            logger.info(len(answer_texts_list))
+
             metadata["question"] = question_text_list
             metadata['answer_texts_list'] = answer_texts_list
             span_starts_list = [[self.getwordspan(answer['span_start'],paragraph)] for answer in ans]
+            if(len(span_starts_list)>10):
+                span_starts_list=span_starts_list[:10]
             span_ends_list = [[self.getwordspan(answer['span_end'],paragraph)] for answer in ans]
+            if(len(span_ends_list)>10):
+                span_ends_list=span_ends_list[:10]
             #for answer_starts, an_list in zip(span_starts_list, answer_texts_list):
             #    span_ends = [start + len(answer) for start, answer in zip(answer_starts, an_list)]
             #    span_ends_list.append(span_ends)
-            yesno_list = [str('x') for qa in qas]
-            followup_list = [str('n') for qa in qas]
+            yesno_list = [str('x') for qa in qas][:10]
+            #yesno_list = [str('x') for qa in qas]
+            followup_list = [str('n') for qa in qas][:10]
+            #followup_list = [str('n') for qa in qas]
             instance = self.text_to_instance(question_text_list,
                                                  paragraph,
                                                  span_starts_list,
