@@ -19,7 +19,7 @@ from allennlp.training.metrics import Average, BooleanAccuracy, CategoricalAccur
 logger = logging.getLogger(__name__)  # pylint: disable=invalid-name
 
 
-@Model.register("dialog_qa")
+@Model.register("dialog_qa1")
 class DialogQA(Model):
     """
     This class implements modified version of BiDAF
@@ -58,7 +58,7 @@ class DialogQA(Model):
                  dropout: float = 0.2,
                  num_context_answers: int = 0,
                  marker_embedding_dim: int = 10,
-                 max_span_length: int = 30) -> None:
+                 max_span_length: int = 25) -> None:
         super().__init__(vocab)
         self._num_context_answers = num_context_answers
         self._max_span_length = max_span_length
@@ -66,7 +66,7 @@ class DialogQA(Model):
         self._phrase_layer = phrase_layer
         self._marker_embedding_dim = marker_embedding_dim
         self._encoding_dim = phrase_layer.get_output_dim()
-        max_turn_length = 12
+        max_turn_length = 25
 
         self._matrix_attention = LinearMatrixAttention(self._encoding_dim, self._encoding_dim, 'x,y,x*y')
         self._merge_atten = TimeDistributed(torch.nn.Linear(self._encoding_dim * 4, self._encoding_dim))
@@ -186,6 +186,8 @@ class DialogQA(Model):
             A scalar loss to be optimised.
         """
         batch_size, max_qa_count, max_q_len, _ = question['token_characters'].size()
+        #print("VERIFYING")
+        #print(batch_size, max_qa_count, max_q_len)
         total_qa_count = batch_size * max_qa_count
         qa_mask = torch.ge(followup_list, 0).view(total_qa_count)
         embedded_question = self._text_field_embedder(question, num_wrapping_dims=1)
@@ -215,6 +217,10 @@ class DialogQA(Model):
             repeated_embedded_passage = embedded_passage.unsqueeze(1).repeat(1, max_qa_count, 1, 1). \
                 view(total_qa_count, passage_length, self._text_field_embedder.get_output_dim())
             # batch_size * max_qa_count, passage_length, word_embed_dim
+            print("Testing")
+            logger.info(total_qa_count)
+            logger.info(passage_length)
+            logger.info(p1_answer_marker.shape)
             p1_answer_marker = p1_answer_marker.view(total_qa_count, passage_length)
             p1_answer_marker_emb = self._prev_ans_marker(p1_answer_marker)
             repeated_embedded_passage = torch.cat([repeated_embedded_passage, p1_answer_marker_emb], dim=-1)
@@ -228,6 +234,12 @@ class DialogQA(Model):
                     repeated_embedded_passage = torch.cat([repeated_embedded_passage, p3_answer_marker_emb],
                                                           dim=-1)
 
+            #print(repeated_passage_mask.shape)
+            #print(repeated_embedded_passage.shape)
+            #print(self._phrase_layer)
+            #print(torch.sum(repeated_passage_mask[:, 0]))
+            #print(torch.sum(repeated_passage_mask[:, 0]).int())
+            #print(torch.sum(repeated_passage_mask[:, 0]).int().item())
             repeated_encoded_passage = self._variational_dropout(self._phrase_layer(repeated_embedded_passage,
                                                                                     repeated_passage_mask))
         else:
