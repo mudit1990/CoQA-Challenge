@@ -14,14 +14,12 @@ from allennlp.data.tokenizers import Token, Tokenizer, WordTokenizer
 # from allennlp import commands
 
 logger = logging.getLogger(__name__)  # pylint: disable=invalid-name
-
-
 #
 # commands.main()
 
 
-@DatasetReader.register("coqa-squad-plus")
-class SquadReaderPlus(DatasetReader):
+@DatasetReader.register("coqa-squad")
+class SquadReader(DatasetReader):
     """
     Reads a JSON-formatted SQuAD file and returns a ``Dataset`` where the ``Instances`` have four
     fields: ``question``, a ``TextField``, ``passage``, another ``TextField``, and ``span_start``
@@ -59,16 +57,29 @@ class SquadReaderPlus(DatasetReader):
             dataset_json = json.load(dataset_file)
             dataset = dataset_json['data']
         logger.info("Reading the dataset")
+        # for article in dataset:
+        #     for paragraph_json in article['paragraphs']:
+        #         paragraph = paragraph_json["context"]
+        #         tokenized_paragraph = self._tokenizer.tokenize(paragraph)
+        #
+        #         for question_answer in paragraph_json['qas']:
+        #             question_text = question_answer["question"].strip().replace("\n", "")
+        #             answer_texts = [answer['text'] for answer in question_answer['answers']]
+        #             span_starts = [answer['answer_start'] for answer in question_answer['answers']]
+        #             span_ends = [start + len(answer) for start, answer in zip(span_starts, answer_texts)]
+        #             instance = self.text_to_instance(question_text,
+        #                                              paragraph,
+        #                                              zip(span_starts, span_ends),
+        #                                              answer_texts,
+        #                                              tokenized_paragraph)
+        #             yield instance
+
         for paragraph_json in dataset:
             paragraph = paragraph_json["story"]
             # paragraph = paragraph_json["story"].strip().replace("\n", "")
             n_paragraph, padding = self.delete_leading_tokens_of_paragraph(paragraph)
             # tokenized_paragraph = self._tokenizer.tokenize(paragraph)
             tokenized_paragraph = self._tokenizer.tokenize(n_paragraph)
-
-            # store the history
-            # append previous answers to the passage and the previous questions
-            history = list()
 
             ind = 0
             for question_answer in paragraph_json['questions']:
@@ -81,7 +92,6 @@ class SquadReaderPlus(DatasetReader):
                 answer = paragraph_json["answers"][ind]['span_text'].strip().replace("\n", "")
                 start = paragraph_json["answers"][ind]['span_start'] + before
                 end = start + len(answer)
-                answer = paragraph_json["answers"][ind]['input_text'].strip().replace("\n", "")
 
                 # debug 10.15 21:20
                 if answer.lower() == "unknown":
@@ -91,8 +101,6 @@ class SquadReaderPlus(DatasetReader):
 
                 answer_texts.append(answer)
                 # answer_texts = [answer['text'] for answer in question_answer['answers']]
-
-                history.append((question_text, answer))
 
                 span_starts = list()
                 span_starts.append(start)
@@ -110,7 +118,6 @@ class SquadReaderPlus(DatasetReader):
                         before = self.get_front_blanks(tmp, padding)
                         start = additional_answers[key][ind]["span_start"] + before
                         end = start + len(answer)
-                        answer = additional_answers[key][ind]["input_text"].strip().replace("\n", "")
 
                         # debug 10.15 21:20
                         if answer.lower() == "unknown":
@@ -122,23 +129,14 @@ class SquadReaderPlus(DatasetReader):
                         span_starts.append(start)
                         span_ends.append(end)
 
-                his_paragraph = paragraph
-                his_question = question_text
-                if ind > 1:
-                    his_paragraph = his_paragraph + " " + str(history[ind - 1][1])
-                    his_question = str(history[ind - 1][0]) + " " + his_question
-                    if ind > 2:
-                        his_paragraph = his_paragraph + " " + str(history[ind - 2][1])
-                        his_question = str(history[ind - 2][0]) + " " + his_question
-                his_tokenized_paragraph = self._tokenizer.tokenize(his_paragraph)
 
                 ind += 1
 
-                instance = self.text_to_instance(his_question,
-                                                 his_paragraph,
+                instance = self.text_to_instance(question_text,
+                                                 paragraph,
                                                  zip(span_starts, span_ends),
                                                  answer_texts,
-                                                 his_tokenized_paragraph)
+                                                 tokenized_paragraph)
                 yield instance
 
     def get_front_blanks(self, answer, padding):
