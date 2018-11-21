@@ -279,6 +279,7 @@ class BidirectionalAttentionFlow(Model):
                 end_offset = offsets[predicted_span[1]][1]
                 best_span_string = passage_str[start_offset:end_offset]
                 output_dict['best_span_str'].append(best_span_string)
+                
                 answer_texts = metadata[i].get('answer_texts', [])
                 if answer_texts:
                     self._squad_metrics(best_span_string, answer_texts)
