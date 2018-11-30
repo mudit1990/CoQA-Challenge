@@ -388,7 +388,7 @@ class SimpleSeq2Seq(Model):
         # converts tokens to words till it hits an "end" token
         str_list = []
         for t in tokens:
-            w = self.vocab.get_token_from_index(t.numpy().item())
+            w = self.vocab.get_token_from_index(t.cpu().numpy().item())
             if w == END_SYMBOL:
                 break
             if w == START_SYMBOL:
