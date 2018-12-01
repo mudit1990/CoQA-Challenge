@@ -1,0 +1,1 @@
+sbatch -p m40-long --gres=gpu:1 --mem=240000 --exclude=node001,node002,node003,node007,node010,node011,node012,node013,node017 --output=bidaf_plus.log gypsum_run_training.sh

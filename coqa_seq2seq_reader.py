@@ -54,6 +54,7 @@ class CoqaSeq2SeqReader(DatasetReader):
         super().__init__(lazy)
         self._tokenizer = tokenizer or WordTokenizer()
         self._token_indexers = token_indexers or {'tokens': SingleIdTokenIndexer()}
+        self.question_tag = '<q>'
 
     @overrides
     def _read(self, file_path: str):
@@ -71,8 +72,11 @@ class CoqaSeq2SeqReader(DatasetReader):
             questions_list = [ques["input_text"].strip().replace("\n", "") for ques in all_questions]
             rationale_list = [answer['span_text'].strip().replace("\n", "") for answer in golden_answers]
             answers_list = [answer['input_text'].strip().replace("\n", "") for answer in golden_answers]
+            ques_rat_list = [' '.join([rationale_list[i], self.question_tag, questions_list[i]]) for i in
+                             range(len(questions_list))]
             for i in range(len(questions_list)):
-                yield self.text_to_instance(rationale_list[i], answers_list[i])
+                yield self.text_to_instance(ques_rat_list[i], answers_list[i])
+                # yield self.text_to_instance(rationale_list[i], answers_list[i])
 
     @overrides
     def text_to_instance(self, source_string: str, target_string: str = None) -> Instance:  # type: ignore

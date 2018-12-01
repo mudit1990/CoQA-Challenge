@@ -68,27 +68,27 @@ class CoqaReader(DatasetReader):
             paragraph_id = paragraph_json['id']
             metadata["instance_id"] = [str(paragraph_id) + "_" + str(ques['turn_id']) for ques in all_questions]
 
-            # limit to 10 questions per passage due to memory issues
-            if (len(metadata["instance_id"]) > 10):
-                metadata["instance_id"] = metadata["instance_id"][:10]
+            # limit to 15 questions per passage due to memory issues
+            if (len(metadata["instance_id"]) > 15):
+                metadata["instance_id"] = metadata["instance_id"][:15]
             question_text_list = [ques["input_text"].strip().replace("\n", "") for ques in all_questions]
-            if (len(question_text_list) > 10):
-                question_text_list = question_text_list[:10]
+            if (len(question_text_list) > 15):
+                question_text_list = question_text_list[:15]
             answer_texts_list = [[answer['span_text']] for answer in golden_answers]
-            if (len(answer_texts_list) > 10):
-                answer_texts_list = answer_texts_list[:10]
+            if (len(answer_texts_list) > 15):
+                answer_texts_list = answer_texts_list[:15]
 
             metadata["question"] = question_text_list
             metadata['answer_texts_list'] = answer_texts_list
             span_start_list = [[answer['span_start']] for answer in golden_answers]
-            if (len(span_start_list) > 10):
-                span_start_list = span_start_list[:10]
+            if (len(span_start_list) > 15):
+                span_start_list = span_start_list[:15]
             span_end_list = [[answer['span_end']] for answer in golden_answers]
-            if (len(span_end_list) > 10):
-                span_end_list = span_end_list[:10]
+            if (len(span_end_list) > 15):
+                span_end_list = span_end_list[:15]
             # removing yes/no, follow-up from the model by defaulting it
-            yesno_list = [str('x') for ques in all_questions][:10]
-            followup_list = [str('n') for ques in all_questions][:10]
+            yesno_list = [str('x') for ques in all_questions][:15]
+            followup_list = [str('n') for ques in all_questions][:15]
             instance = self.text_to_instance(question_text_list,
                                              paragraph,
                                              span_start_list,
