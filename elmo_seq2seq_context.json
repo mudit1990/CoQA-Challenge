@@ -36,7 +36,6 @@
           "embedding_dim": 100,
 	  "trainable": false
 	},
-	,  
 	"elmo": {
 		"type": "elmo_token_embedder",
 		"options_file": "https://s3-us-west-2.amazonaws.com/allennlp/models/elmo/2x4096_512_2048cnn_2xhighway/elmo_2x4096_512_2048cnn_2xhighway_options.json",
@@ -91,7 +90,7 @@
     ]
   },
   "trainer": {
-    "cuda_device":0,
+    "cuda_device":-1,
     "learning_rate_scheduler": {
       "type": "reduce_on_plateau",
       "factor": 0.5,
