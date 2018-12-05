@@ -1,5 +1,15 @@
 # CoQA-Challenge
 NLP 585 Course Project
 
-# Running dialog-qa on coqa
-allennlp train quac.json -s {Some directory} --include-package coqa_reader
+# How to run
+
+## Training
+BiDAF++ model: 
+Seq2Seq model:
+
+## Evaluation:
+BiDAF++ model: 
+Seq2Seq model:
+
+## Predictions:
+BiDAF++ model: ./bidafplus_predict.sh
