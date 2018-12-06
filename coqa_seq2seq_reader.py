@@ -1,3 +1,4 @@
+import os
 import json
 import logging
 from typing import Any, Dict, List, Tuple
@@ -60,26 +61,49 @@ class CoqaSeq2SeqReader(DatasetReader):
     def _read(self, file_path: str):
         # if `file_path` is a URL, redirect to the cache
         file_path = cached_path(file_path)
+        # print("file_path = ", file_path)
         logger.info("Reading file at %s", file_path)
+        
         with open(file_path) as dataset_file:
             dataset_json = json.load(dataset_file)
             dataset = dataset_json['data']
+
+        # READ THE BIDAF++ OUTPUTS
+        bidafplus_output_filename = os.path.join(os.path.dirname(os.path.realpath(file_path)),
+                                                                'bidafplus_output_formatted.json')
+        with open(bidafplus_output_filename) as bidafplus_outputs:
+            best_span_str_json = json.load(bidafplus_outputs)
+            best_span_str = best_span_str_json['data']
+        
         logger.info("Reading the dataset")
         for paragraph_json in dataset:
             all_questions = paragraph_json['questions']
             golden_answers = paragraph_json['answers']
             paragraph_id = paragraph_json['id']
-            questions_list = [ques["input_text"].strip().replace("\n", "") for ques in all_questions]
-            rationale_list = [answer['span_text'].strip().replace("\n", "") for answer in golden_answers]
-            answers_list = [answer['input_text'].strip().replace("\n", "") for answer in golden_answers]
-            ques_rat_list = [' '.join([rationale_list[i], self.question_tag, questions_list[i]]) for i in
+
+            # extractive outputs from BIDAF++
+            best_span_str_list = best_span_str[paragraph_id]
+            
+            # metadata
+            metadata = {}
+            metadata['paragraph_id'] = paragraph_id
+            metadata['questions'] = [ques["input_text"].strip().replace("\n", "") for ques in all_questions][:15]
+
+            questions_list = [ques["input_text"].strip().replace("\n", "") for ques in all_questions][:15]
+            golden_rationale_list = [answer['span_text'].strip().replace("\n", "") for answer in golden_answers][:15]
+            answers_list = [answer['input_text'].strip().replace("\n", "") for answer in golden_answers][:15]
+            bidafplus_rationale_list = [answer['answer_text'].strip().replace("\n", "") for answer in best_span_str_list][:15]
+            ques_rat_list = [' '.join([bidafplus_rationale_list[i], self.question_tag, questions_list[i]]) for i in
                              range(len(questions_list))]
             for i in range(len(questions_list)):
-                yield self.text_to_instance(ques_rat_list[i], answers_list[i])
+                yield self.text_to_instance(ques_rat_list[i], answers_list[i], metadata)
                 # yield self.text_to_instance(rationale_list[i], answers_list[i])
 
     @overrides
-    def text_to_instance(self, source_string: str, target_string: str = None) -> Instance:  # type: ignore
+    def text_to_instance(self, source_string: str, 
+                         target_string: str = None, 
+                         paragraph_id: str = None,
+                         turn_id: int = 0) -> Instance:  # type: ignore
         # pylint: disable=arguments-differ
         tokenized_source = self._tokenizer.tokenize(source_string)
         tokenized_source.insert(0, Token(START_SYMBOL))
@@ -90,6 +114,7 @@ class CoqaSeq2SeqReader(DatasetReader):
             tokenized_target.insert(0, Token(START_SYMBOL))
             tokenized_target.append(Token(END_SYMBOL))
             target_field = TextField(tokenized_target, self._token_indexers)
-            return Instance({"source_tokens": source_field, "target_tokens": target_field})
+            return Instance({"source_tokens": source_field, 
+                             "target_tokens": target_field}) 
         else:
-            return Instance({'source_tokens': source_field})
+            return Instance({"source_tokens": source_field}) 

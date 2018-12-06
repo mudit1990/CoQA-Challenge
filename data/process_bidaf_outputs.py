@@ -3,7 +3,7 @@ import json
 # Dev predictions
 with open('dev/bidafplus_output.json') as f:
     lines = f.readlines()
-    L = []
+    L = {}
     for line in lines:
         passage_json = {}
         line_json = json.loads(line)
@@ -11,14 +11,14 @@ with open('dev/bidafplus_output.json') as f:
         passage_json['id'] = _id
         answers = line_json['best_span_str']
         qids = line_json['qid']
-        passage_json['bidafplus_answers'] = []
+        passage_json = []
         for turn, answer in zip(qids, answers):
             turn_id = int(turn.split('_')[1])
             tmp = {}
             tmp['turn_id'] = turn_id
             tmp['answer_text'] = answer
-            passage_json['bidafplus_answers'].append(tmp)
-        L.append(passage_json)
+            passage_json.append(tmp)
+        L[_id] = passage_json
     out = {}
     out['data'] = L
 
@@ -27,7 +27,7 @@ with open('dev/bidafplus_output.json') as f:
 
 with open('test/bidafplus_output.json') as f:
     lines = f.readlines()
-    L = []
+    L = {}
     for line in lines:
         passage_json = {}
         line_json = json.loads(line)
@@ -35,14 +35,14 @@ with open('test/bidafplus_output.json') as f:
         passage_json['id'] = _id
         answers = line_json['best_span_str']
         qids = line_json['qid']
-        passage_json['bidafplus_answers'] = []
+        passage_json = []
         for turn, answer in zip(qids, answers):
             turn_id = int(turn.split('_')[1])
             tmp = {}
             tmp['turn_id'] = turn_id
             tmp['answer_text'] = answer
-            passage_json['bidafplus_answers'].append(tmp)
-        L.append(passage_json)
+            passage_json.append(tmp)
+        L[_id] = passage_json
     out = {}
     out['data'] = L
 
