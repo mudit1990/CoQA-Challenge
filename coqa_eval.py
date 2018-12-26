@@ -6,6 +6,8 @@ import json
 import re
 import string
 import sys
+import pickle
+import numpy as np
 
 from collections import Counter, OrderedDict
 
@@ -13,15 +15,13 @@ OPTS = None
 
 out_domain = ["reddit", "science"]
 in_domain = ["mctest", "gutenberg", "race", "cnn", "wikipedia"]
-domain_mappings = {"mctest": "children_stories", "gutenberg": "literature", "race": "mid-high_school", "cnn": "news",
-                   "wikipedia": "wikipedia", "science": "science", "reddit": "reddit"}
+domain_mappings = {"mctest":"children_stories", "gutenberg":"literature", "race":"mid-high_school", "cnn":"news", "wikipedia":"wikipedia", "science":"science", "reddit":"reddit"}
 
 
 class CoQAEvaluator():
 
-    def __init__(self):
-        # self.gold_data, self.id_to_source = CoQAEvaluator.gold_answers_to_dict(gold_file)
-        pass
+    def __init__(self, gold_file):
+        self.gold_data, self.id_to_source = CoQAEvaluator.gold_answers_to_dict(gold_file)
 
     @staticmethod
     def gold_answers_to_dict(gold_file):
@@ -34,8 +34,10 @@ class CoQAEvaluator():
             id_to_source[story_id] = source
             questions = story['questions']
             multiple_answers = [story['answers']]
-            multiple_answers += story['additional_answers'].values()
+            # multiple_answers += story['additional_answers'].values()
             for i, qa in enumerate(questions):
+                if i == 15:
+                    break
                 qid = qa['turn_id']
                 if i + 1 != qid:
                     sys.stderr.write("Turn id should match index {}: {}\n".format(i + 1, qa))
@@ -104,19 +106,6 @@ class CoQAEvaluator():
         f1 = (2 * precision * recall) / (precision + recall)
         return f1
 
-    def get_f1(self, best_span_string, answer_strings):
-        f1 = 0.0
-        for answer_string in answer_strings:
-            f1 = max(f1, self.compute_f1(answer_string, best_span_string))
-        return f1
-
-    def get_em(self, best_span_string, answer_strings):
-        em = 0.0
-        for answer_string in answer_strings:
-            em = max(em, self.compute_exact(answer_string, best_span_string))
-        return em
-
-
     @staticmethod
     def _compute_turn_score(a_gold_list, a_pred):
         f1_sum = 0.0
@@ -183,6 +172,88 @@ class CoQAEvaluator():
         exact_scores, f1_scores = self.get_raw_scores(pred_data)
         return self.get_domain_scores(exact_scores, f1_scores)
 
+    def model_perf_stats(self, pred_data, annot_data):
+        exact_scores, f1_scores = self.get_raw_scores(pred_data)
+        scores = {}
+        scores['yn'] = self.get_yn_stats(f1_scores, annot_data)
+        scores['date_num'] = self.get_date_num_stats(f1_scores, annot_data)
+        scores['gt_len'] = self.get_gt_len_stats(f1_scores, annot_data)
+        scores['abs_ext'] = self.get_abs_ext(f1_scores, annot_data)
+        return scores
+
+    def get_yn_stats(self, f1_scores, annot_data):
+        is_yn = []
+        not_yn = []
+        for k in annot_data.keys():
+            pid, qid = tuple(k.split('_'))
+            f1_k = (pid, int(qid))
+            if annot_data[k]['is_yn']:
+                is_yn.append(f1_scores[f1_k])
+            else:
+                not_yn.append(f1_scores[f1_k])
+        return {'is_yn':100*np.mean(is_yn), 
+                'is_yn_pop':len(is_yn)/9450, 
+                'not_yn':100*np.mean(not_yn), 
+                'not_yn_pop':len(not_yn)/9450}
+
+
+    def get_date_num_stats(self, f1_scores, annot_data):
+        is_dn = []
+        not_dn = []
+        for k in annot_data.keys():
+            pid, qid = tuple(k.split('_'))
+            f1_k = (pid, int(qid))
+            if annot_data[k]['has_num_date']:
+                is_dn.append(f1_scores[f1_k])
+            else:
+                not_dn.append(f1_scores[f1_k])
+        return {'has_dn':100*np.mean(is_dn), 
+                'has_dn_pop':len(is_dn)/9450,
+                'not_dn':100*np.mean(not_dn), 
+                'not_dn_pop':len(not_dn)/9450}
+
+
+    def get_gt_len_stats(self, f1_scores, annot_data):
+        s = []
+        m = []
+        l = []
+        for k in annot_data.keys():
+            pid, qid = tuple(k.split('_'))
+            f1_k = (pid, int(qid))
+            if annot_data[k]['gt_ans_len'] <= 2:
+                s.append(f1_scores[f1_k])
+            elif annot_data[k]['gt_ans_len'] <= 5:
+                m.append(f1_scores[f1_k])
+            else:
+                l.append(f1_scores[f1_k])
+        return {'<=2':100*np.mean(s), 
+                '<=2 pop':len(s)/9450,
+                '3-5':100*np.mean(m), 
+                '3-5 pop':len(m)/9450,
+                '>5':100*np.mean(l),
+                '>5 pop':len(l)/9450}
+
+
+    def get_abs_ext(self, f1_scores, annot_data):
+        ab = []
+        tr_ab = []
+        ex = []
+        for k in annot_data.keys():
+            pid, qid = tuple(k.split('_'))
+            f1_k = (pid, int(qid))
+            if annot_data[k]['span_overlap'] < 1.0:
+                ab.append(f1_scores[f1_k])
+                if annot_data[k]['is_yn'] is False:
+                    tr_ab.append(f1_scores[f1_k])
+            else:
+                ex.append(f1_scores[f1_k])
+        return {'abs':100*np.mean(ab), 
+                'abs pop':len(ab)/9450,
+                'true_abs':100*np.mean(tr_ab),
+                'true abs pop':len(tr_ab)/9450,
+                'ext':100*np.mean(ex),
+                'ext pop':len(ex)/9450}
+
     def get_domain_scores(self, exact_scores, f1_scores):
         sources = {}
         for source in in_domain + out_domain:
@@ -235,7 +306,6 @@ class CoQAEvaluator():
 
         return scores
 
-
 def parse_args():
     parser = argparse.ArgumentParser('Official evaluation script for CoQA.')
     parser.add_argument('--data-file', dest="data_file", help='Input data JSON file.')
@@ -249,9 +319,11 @@ def parse_args():
         sys.exit(1)
     return parser.parse_args()
 
-
 def main():
     evaluator = CoQAEvaluator(OPTS.data_file)
+
+    with open('data/test/data_annotations.pkl', 'rb') as fl:
+        annot_data = pickle.load(fl)
 
     if OPTS.human:
         print(json.dumps(evaluator.human_performance(), indent=2))
@@ -259,8 +331,8 @@ def main():
     if OPTS.pred_file:
         with open(OPTS.pred_file) as f:
             pred_data = CoQAEvaluator.preds_to_dict(OPTS.pred_file)
-        print(json.dumps(evaluator.model_performance(pred_data), indent=2))
-
+        # print(json.dumps(evaluator.model_performance(pred_data), indent=2))
+        print(json.dumps(evaluator.model_perf_stats(pred_data, annot_data), indent=2))
 
 if __name__ == '__main__':
     OPTS = parse_args()
